@@ -8,6 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Daum Postcode API (Kakao) -->
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; }
@@ -35,7 +37,7 @@
                 <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
                 <h1 class="text-xl font-bold">FY26 Market Definition Search</h1>
             </div>
-            <div class="text-xs text-gray-300">Ver 2.1 (Eng Address)</div>
+            <div class="text-xs text-gray-300">Ver 3.0 (Address & Postcode)</div>
         </div>
     </header>
 
@@ -51,7 +53,6 @@
         </div>
 
         <!-- Step 1: File Upload Section (Fallback) -->
-        <!-- 자동으로 파일을 못 찾으면 이 부분이 보입니다 -->
         <div id="upload-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-6 border border-gray-200">
             <h2 class="text-lg font-semibold mb-2 flex items-center text-orange-600">
                 <i data-lucide="alert-circle" class="w-5 h-5 mr-2"></i>
@@ -78,23 +79,34 @@
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-semibold flex items-center">
                     <i data-lucide="search" class="w-5 h-5 mr-2 text-blue-600"></i>
-                    우편번호 검색
+                    검색 (우편번호 또는 주소)
                 </h2>
                 <span id="db-status-badge" class="bg-gray-200 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded border border-gray-300">데이터 대기중</span>
             </div>
             
-            <div class="relative">
-                <input type="text" id="postcode-input" 
+            <div class="relative flex gap-2">
+                <input type="text" id="input-keyword" 
                     class="block w-full p-4 pl-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 outline-none" 
-                    placeholder="우편번호 5자리를 입력하세요 (예: 10000)" maxlength="5">
-                <button type="button" id="search-btn" class="text-white absolute right-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">검색</button>
+                    placeholder="우편번호(5자리) 또는 주소(예: 남부순환로)" >
+                
+                <button type="button" id="search-btn" class="bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg text-sm px-6 py-2 whitespace-nowrap focus:ring-4 focus:outline-none focus:ring-blue-300">
+                    검색
+                </button>
             </div>
-            <p class="mt-2 text-xs text-gray-400">엔터키를 눌러도 검색됩니다.</p>
+            <p class="mt-2 text-xs text-gray-500">
+                💡 <strong>숫자 5자리</strong> 입력 시 즉시 조회, <strong>주소</strong> 입력 시 주소 찾기 창이 열립니다.
+            </p>
         </div>
 
         <!-- Result Section -->
         <div id="result-container" class="hidden">
             <div class="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-r-lg shadow-md hover:shadow-lg transition-shadow">
+                <!-- User Selected Address Display -->
+                <div id="selected-address-box" class="hidden mb-4 p-2 bg-white rounded border border-blue-100 text-sm text-gray-600 flex items-center">
+                    <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded mr-2">선택 주소</span>
+                    <span id="display-selected-addr"></span>
+                </div>
+
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <p class="text-xs text-gray-500 uppercase tracking-wide font-bold">Market Name</p>
@@ -112,20 +124,25 @@
                     <p class="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Address (English)</p>
                     <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
                 </div>
+                
+                <!-- Debug / Postcode Info -->
+                <div class="mt-4 text-right">
+                    <span class="text-xs text-gray-400">Postcode: <span id="res-postcode-val"></span></span>
+                </div>
             </div>
         </div>
 
         <!-- No Result / Error Message -->
         <div id="error-message" class="hidden p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 text-center" role="alert">
             <i data-lucide="alert-triangle" class="inline w-4 h-4 mr-1"></i>
-            <span class="font-medium">검색 결과가 없습니다.</span> 우편번호를 확인해주세요.
+            <span class="font-medium">검색 결과가 없습니다.</span> 우편번호(<span id="err-code"></span>)가 데이터 파일에 존재하지 않습니다.
         </div>
 
     </main>
 
     <footer class="bg-gray-200 py-4 mt-auto">
         <div class="container mx-auto text-center text-xs text-gray-500">
-            IKEA Market Definition Tool | Powered by automated CSV Lookup
+            IKEA Market Definition Tool | Powered by automated CSV Lookup & Kakao Address API
         </div>
     </footer>
 
@@ -135,8 +152,6 @@
 
         let marketData = []; 
         let isDataLoaded = false;
-        
-        // Configuration: Name of the CSV file to look for automatically
         const TARGET_CSV_FILENAME = 'FY26 Market Definition.csv';
 
         // DOM Elements
@@ -147,15 +162,21 @@
         const fileInput = document.getElementById('dropzone-file');
         
         const searchBtn = document.getElementById('search-btn');
-        const postcodeInput = document.getElementById('postcode-input');
+        const inputKeyword = document.getElementById('input-keyword');
+        
         const resultContainer = document.getElementById('result-container');
         const errorMessage = document.getElementById('error-message');
+        const errCodeSpan = document.getElementById('err-code');
         
         const resMarket = document.getElementById('res-market');
         const resPMA = document.getElementById('res-pma');
         const resAddress = document.getElementById('res-address');
+        const resPostcodeVal = document.getElementById('res-postcode-val');
+        
+        const selectedAddressBox = document.getElementById('selected-address-box');
+        const displaySelectedAddr = document.getElementById('display-selected-addr');
 
-        // --- 1. Auto-Load Logic on Startup ---
+        // --- 1. Auto-Load Logic ---
         window.addEventListener('DOMContentLoaded', () => {
             attemptAutoLoad();
         });
@@ -163,22 +184,17 @@
         function attemptAutoLoad() {
             loadingStatus.classList.remove('hidden');
 
-            // Try to fetch the CSV file from the same directory
             fetch(TARGET_CSV_FILENAME)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error("Network response was not ok");
-                    }
+                    if (!response.ok) throw new Error("Network response was not ok");
                     return response.text();
                 })
                 .then(csvText => {
-                    // Success: Parse the CSV text
                     parseCSV(csvText);
                     loadingStatus.classList.add('hidden');
                 })
                 .catch(error => {
-                    // Fail: Show upload section
-                    console.warn("Auto-load failed (likely due to CORS or missing file). Switching to manual upload.");
+                    console.warn("Auto-load failed. Switching to manual upload.");
                     loadingStatus.classList.add('hidden');
                     uploadSection.classList.remove('hidden');
                 });
@@ -194,15 +210,12 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     onDataLoaded(results.data);
-                    uploadSection.classList.add('hidden'); // Hide upload section after success
+                    uploadSection.classList.add('hidden');
                 },
-                error: function(err) {
-                    alert("파일 읽기 실패: " + err);
-                }
+                error: function(err) { alert("파일 읽기 실패: " + err); }
             });
         });
 
-        // --- 3. Shared Parsing & Setup Logic ---
         function parseCSV(csvText) {
             Papa.parse(csvText, {
                 header: true,
@@ -216,27 +229,37 @@
         function onDataLoaded(data) {
             marketData = data;
             isDataLoaded = true;
-
-            // UI Update
             dbStatusBadge.textContent = "✅ 데이터 연결됨";
             dbStatusBadge.className = "bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200";
-            
             searchSection.classList.remove('opacity-50', 'pointer-events-none');
-            postcodeInput.focus();
-
-            // Check URL parameters immediately
+            inputKeyword.focus();
             checkUrlParam();
         }
 
-        // --- 4. Search Logic ---
-        function performSearch() {
+        // --- 3. Intelligent Search Logic (Postcode vs Address) ---
+        
+        function handleSearchAction() {
             if (!isDataLoaded) return;
+            const val = inputKeyword.value.trim();
+            if (!val) return;
 
-            const query = postcodeInput.value.trim();
-            if (!query) return;
+            // Check if input is a 5-digit number (Postcode)
+            const isPostcode = /^\d{5}$/.test(val);
 
+            if (isPostcode) {
+                // Direct lookup
+                selectedAddressBox.classList.add('hidden'); // Hide address helper
+                lookupByPostcode(val);
+            } else {
+                // Treat as Address -> Open Daum Postcode Search
+                openDaumAddressSearch(val);
+            }
+        }
+
+        // Function to look up the data from CSV
+        function lookupByPostcode(code) {
             // Find logic
-            const result = marketData.find(row => row['Postcode'] == query);
+            const result = marketData.find(row => row['Postcode'] == code);
 
             if (result) {
                 errorMessage.classList.add('hidden');
@@ -244,8 +267,9 @@
 
                 resMarket.textContent = result['Market Name'] || "N/A";
                 resPMA.textContent = result['PMA'] || "N/A";
+                resPostcodeVal.textContent = code;
 
-                // Address Construction (Modified to use English columns with line breaks in header)
+                // English Address Construction
                 const addressParts = [
                     result['Province\nSi / Do English'],
                     result['District\nGu / Gun English'],
@@ -255,29 +279,54 @@
                 resAddress.textContent = addressParts.join(' ');
 
                 // Update URL History
-                const newUrl = new URL(window.location);
-                newUrl.searchParams.set('code', query);
-                window.history.pushState({}, '', newUrl);
+                window.location.hash = code; 
 
             } else {
                 resultContainer.classList.add('hidden');
                 errorMessage.classList.remove('hidden');
+                errCodeSpan.textContent = code;
             }
         }
 
-        searchBtn.addEventListener('click', performSearch);
-        postcodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') performSearch();
+        // Function to open Daum Postcode API
+        function openDaumAddressSearch(keyword) {
+            new daum.Postcode({
+                oncomplete: function(data) {
+                    // This function runs when user selects an address
+                    const zonecode = data.zonecode; // 5-digit postcode
+                    const fullAddress = data.roadAddress || data.jibunAddress; // Selected address
+                    
+                    // 1. Update Input
+                    inputKeyword.value = zonecode;
+                    
+                    // 2. Show which address was selected (User feedback)
+                    selectedAddressBox.classList.remove('hidden');
+                    displaySelectedAddr.textContent = fullAddress;
+
+                    // 3. Trigger Lookup
+                    lookupByPostcode(zonecode);
+                }
+            }).open({
+                q: keyword // Pre-fill the search box with what user typed
+            });
+        }
+
+        // Event Listeners
+        searchBtn.addEventListener('click', handleSearchAction);
+        
+        inputKeyword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearchAction();
         });
 
         function checkUrlParam() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            if (code) {
-                postcodeInput.value = code;
-                performSearch();
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                inputKeyword.value = hash;
+                lookupByPostcode(hash);
             }
         }
+
+        window.addEventListener('hashchange', checkUrlParam);
 
     </script>
 </body>
