@@ -35,7 +35,7 @@
                 <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
                 <h1 class="text-xl font-bold">FY26 Market Definition Search</h1>
             </div>
-            <div class="text-xs text-gray-300">Ver 2.0 (Auto-Load)</div>
+            <div class="text-xs text-gray-300">Ver 2.1 (Eng Address)</div>
         </div>
     </header>
 
@@ -109,7 +109,7 @@
                 <div class="border-t border-blue-200 my-3"></div>
                 
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Address</p>
+                    <p class="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Address (English)</p>
                     <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
                 </div>
             </div>
@@ -245,11 +245,11 @@
                 resMarket.textContent = result['Market Name'] || "N/A";
                 resPMA.textContent = result['PMA'] || "N/A";
 
-                // Address Construction
+                // Address Construction (Modified to use English columns with line breaks in header)
                 const addressParts = [
-                    result['Si / Do'],
-                    result['Gu / Gun'],
-                    result['Dong']
+                    result['Province\nSi / Do English'],
+                    result['District\nGu / Gun English'],
+                    result['Neighbourhood\nDong English']
                 ].filter(part => part && part.trim() !== "");
                 
                 resAddress.textContent = addressParts.join(' ');
