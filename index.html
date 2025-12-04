@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FY26 Market Definition Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #1e40af;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-blue-900 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
+                <h1 class="text-xl font-bold">FY26 Market Definition Search</h1>
+            </div>
+            <div class="text-xs text-gray-300">Ver 2.0 (Auto-Load)</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-2xl">
+        
+        <!-- Status Notification -->
+        <div id="loading-status" class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-6 flex items-center justify-between hidden">
+            <div class="flex items-center">
+                <div class="loader mr-3"></div>
+                <span class="text-sm font-medium">서버에서 데이터 파일을 불러오는 중입니다...</span>
+            </div>
+        </div>
+
+        <!-- Step 1: File Upload Section (Fallback) -->
+        <!-- 자동으로 파일을 못 찾으면 이 부분이 보입니다 -->
+        <div id="upload-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-6 border border-gray-200">
+            <h2 class="text-lg font-semibold mb-2 flex items-center text-orange-600">
+                <i data-lucide="alert-circle" class="w-5 h-5 mr-2"></i>
+                데이터 파일 수동 연결
+            </h2>
+            <p class="text-sm text-gray-500 mb-4">
+                자동으로 데이터 파일을 찾을 수 없습니다.<br>
+                <strong>FY26 Market Definition.csv</strong> 파일을 직접 업로드해주세요.
+            </p>
+            
+            <div class="flex items-center justify-center w-full">
+                <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 mb-3 text-gray-400"></i>
+                        <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">클릭하여 파일 선택</span> 또는 드래그 앤 드롭</p>
+                    </div>
+                    <input id="dropzone-file" type="file" class="hidden" accept=".csv" />
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 2: Search Section -->
+        <div id="search-section" class="bg-white p-6 rounded-lg shadow-md mb-6 border border-gray-200 opacity-50 pointer-events-none transition-opacity">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <i data-lucide="search" class="w-5 h-5 mr-2 text-blue-600"></i>
+                    우편번호 검색
+                </h2>
+                <span id="db-status-badge" class="bg-gray-200 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded border border-gray-300">데이터 대기중</span>
+            </div>
+            
+            <div class="relative">
+                <input type="text" id="postcode-input" 
+                    class="block w-full p-4 pl-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 outline-none" 
+                    placeholder="우편번호 5자리를 입력하세요 (예: 10000)" maxlength="5">
+                <button type="button" id="search-btn" class="text-white absolute right-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">검색</button>
+            </div>
+            <p class="mt-2 text-xs text-gray-400">엔터키를 눌러도 검색됩니다.</p>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result-container" class="hidden">
+            <div class="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-r-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-bold">Market Name</p>
+                        <h3 id="res-market" class="text-2xl font-bold text-blue-900">-</h3>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-bold">PMA Code</p>
+                        <span id="res-pma" class="inline-block bg-yellow-400 text-blue-900 text-xs font-bold px-2 py-1 rounded">-</span>
+                    </div>
+                </div>
+                
+                <div class="border-t border-blue-200 my-3"></div>
+                
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Address</p>
+                    <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Result / Error Message -->
+        <div id="error-message" class="hidden p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 text-center" role="alert">
+            <i data-lucide="alert-triangle" class="inline w-4 h-4 mr-1"></i>
+            <span class="font-medium">검색 결과가 없습니다.</span> 우편번호를 확인해주세요.
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-200 py-4 mt-auto">
+        <div class="container mx-auto text-center text-xs text-gray-500">
+            IKEA Market Definition Tool | Powered by automated CSV Lookup
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        let marketData = []; 
+        let isDataLoaded = false;
+        
+        // Configuration: Name of the CSV file to look for automatically
+        const TARGET_CSV_FILENAME = 'FY26 Market Definition.csv';
+
+        // DOM Elements
+        const loadingStatus = document.getElementById('loading-status');
+        const uploadSection = document.getElementById('upload-section');
+        const searchSection = document.getElementById('search-section');
+        const dbStatusBadge = document.getElementById('db-status-badge');
+        const fileInput = document.getElementById('dropzone-file');
+        
+        const searchBtn = document.getElementById('search-btn');
+        const postcodeInput = document.getElementById('postcode-input');
+        const resultContainer = document.getElementById('result-container');
+        const errorMessage = document.getElementById('error-message');
+        
+        const resMarket = document.getElementById('res-market');
+        const resPMA = document.getElementById('res-pma');
+        const resAddress = document.getElementById('res-address');
+
+        // --- 1. Auto-Load Logic on Startup ---
+        window.addEventListener('DOMContentLoaded', () => {
+            attemptAutoLoad();
+        });
+
+        function attemptAutoLoad() {
+            loadingStatus.classList.remove('hidden');
+
+            // Try to fetch the CSV file from the same directory
+            fetch(TARGET_CSV_FILENAME)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    // Success: Parse the CSV text
+                    parseCSV(csvText);
+                    loadingStatus.classList.add('hidden');
+                })
+                .catch(error => {
+                    // Fail: Show upload section
+                    console.warn("Auto-load failed (likely due to CORS or missing file). Switching to manual upload.");
+                    loadingStatus.classList.add('hidden');
+                    uploadSection.classList.remove('hidden');
+                });
+        }
+
+        // --- 2. Manual Upload Logic ---
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    onDataLoaded(results.data);
+                    uploadSection.classList.add('hidden'); // Hide upload section after success
+                },
+                error: function(err) {
+                    alert("파일 읽기 실패: " + err);
+                }
+            });
+        });
+
+        // --- 3. Shared Parsing & Setup Logic ---
+        function parseCSV(csvText) {
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    onDataLoaded(results.data);
+                }
+            });
+        }
+
+        function onDataLoaded(data) {
+            marketData = data;
+            isDataLoaded = true;
+
+            // UI Update
+            dbStatusBadge.textContent = "✅ 데이터 연결됨";
+            dbStatusBadge.className = "bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200";
+            
+            searchSection.classList.remove('opacity-50', 'pointer-events-none');
+            postcodeInput.focus();
+
+            // Check URL parameters immediately
+            checkUrlParam();
+        }
+
+        // --- 4. Search Logic ---
+        function performSearch() {
+            if (!isDataLoaded) return;
+
+            const query = postcodeInput.value.trim();
+            if (!query) return;
+
+            // Find logic
+            const result = marketData.find(row => row['Postcode'] == query);
+
+            if (result) {
+                errorMessage.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+
+                resMarket.textContent = result['Market Name'] || "N/A";
+                resPMA.textContent = result['PMA'] || "N/A";
+
+                // Address Construction
+                const addressParts = [
+                    result['Si / Do'],
+                    result['Gu / Gun'],
+                    result['Dong']
+                ].filter(part => part && part.trim() !== "");
+                
+                resAddress.textContent = addressParts.join(' ');
+
+                // Update URL History
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.set('code', query);
+                window.history.pushState({}, '', newUrl);
+
+            } else {
+                resultContainer.classList.add('hidden');
+                errorMessage.classList.remove('hidden');
+            }
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        postcodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        function checkUrlParam() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            if (code) {
+                postcodeInput.value = code;
+                performSearch();
+            }
+        }
+
+    </script>
+</body>
+</html>
