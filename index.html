@@ -37,7 +37,7 @@
                 <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
                 <h1 class="text-xl font-bold">FY26 Market Definition Search</h1>
             </div>
-            <div class="text-xs text-gray-300">Ver 3.0 (Address & Postcode)</div>
+            <div class="text-xs text-gray-300">Ver 3.1 (PMA Fallback)</div>
         </div>
     </header>
 
@@ -113,7 +113,7 @@
                         <h3 id="res-market" class="text-2xl font-bold text-blue-900">-</h3>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs text-gray-500 uppercase tracking-wide font-bold">PMA Code</p>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide font-bold">PMA (or SMA)</p>
                         <span id="res-pma" class="inline-block bg-yellow-400 text-blue-900 text-xs font-bold px-2 py-1 rounded">-</span>
                     </div>
                 </div>
@@ -265,8 +265,18 @@
                 errorMessage.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
 
+                // --- CHANGED: PMA Fallback Logic ---
+                // PMA가 비어있거나, #N/A 이거나, 공백만 있는 경우 SMA를 사용
+                let displayCode = result['PMA'];
+                const fallbackCode = result['SMA'];
+
+                if (!displayCode || displayCode.trim() === '' || displayCode === '#N/A') {
+                    displayCode = fallbackCode;
+                }
+                // -----------------------------------
+
                 resMarket.textContent = result['Market Name'] || "N/A";
-                resPMA.textContent = result['PMA'] || "N/A";
+                resPMA.textContent = displayCode || "N/A";
                 resPostcodeVal.textContent = code;
 
                 // English Address Construction
