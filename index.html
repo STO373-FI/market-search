@@ -48,7 +48,7 @@
                 </div>
             </div>
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 4.0</div>
+                <div class="text-xs text-gray-300">Ver 4.1</div>
                 <div class="text-[10px] text-gray-400">Map & Bilingual Support</div>
             </div>
         </div>
@@ -155,7 +155,7 @@
                 <div class="mb-4">
                     <p class="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Address (English)</p>
                     <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
-                    <p id="res-address-kr" class="text-sm text-gray-500 mt-1">-</p>
+                    <!-- Removed Korean Address display that caused ??? issues -->
                 </div>
 
                 <!-- MAP SECTION -->
@@ -223,7 +223,7 @@
         const resMarket = document.getElementById('res-market');
         const resPMA = document.getElementById('res-pma');
         const resAddress = document.getElementById('res-address');
-        const resAddressKr = document.getElementById('res-address-kr'); // New element for Korean Address
+        // Removed resAddressKr element reference
         const resPostcodeVal = document.getElementById('res-postcode-val');
         const mapFrame = document.getElementById('map-frame'); // Map Iframe
         
@@ -342,14 +342,8 @@
                 const fullEngAddress = addressParts.join(' ') + ", South Korea"; // Add country for better map result
                 resAddress.textContent = fullEngAddress;
 
-                // Korean Address (Optional, for reference)
-                const addressPartsKr = [
-                    result['Si / Do'],
-                    result['Gu / Gun'],
-                    result['Dong']
-                ].filter(part => part && part.trim() !== "");
-                resAddressKr.textContent = addressPartsKr.join(' ');
-
+                // Removed Korean Address logic to prevent ??? display issues
+                
                 // Update Map
                 updateMap(fullEngAddress);
 
