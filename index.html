@@ -40,16 +40,18 @@
     <!-- Header -->
     <header class="bg-blue-900 text-white shadow-lg">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
+            <!-- Home Link Wrapped Here -->
+            <a href="https://sto373-fi.github.io/market-search/" class="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer block">
                 <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
                 <div>
                     <h1 class="text-xl font-bold leading-tight">FY26 Market Definition Search</h1>
                     <p class="text-[10px] text-blue-200 font-light">Market Area & Address Lookup Tool</p>
                 </div>
-            </div>
+            </a>
+            
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 4.1</div>
-                <div class="text-[10px] text-gray-400">Map & Bilingual Support</div>
+                <div class="text-xs text-gray-300">Ver 4.2</div>
+                <div class="text-[10px] text-gray-400">Home Link Added</div>
             </div>
         </div>
     </header>
@@ -155,7 +157,6 @@
                 <div class="mb-4">
                     <p class="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Address (English)</p>
                     <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
-                    <!-- Removed Korean Address display that caused ??? issues -->
                 </div>
 
                 <!-- MAP SECTION -->
@@ -223,7 +224,6 @@
         const resMarket = document.getElementById('res-market');
         const resPMA = document.getElementById('res-pma');
         const resAddress = document.getElementById('res-address');
-        // Removed resAddressKr element reference
         const resPostcodeVal = document.getElementById('res-postcode-val');
         const mapFrame = document.getElementById('map-frame'); // Map Iframe
         
@@ -341,8 +341,6 @@
                 
                 const fullEngAddress = addressParts.join(' ') + ", South Korea"; // Add country for better map result
                 resAddress.textContent = fullEngAddress;
-
-                // Removed Korean Address logic to prevent ??? display issues
                 
                 // Update Map
                 updateMap(fullEngAddress);
@@ -403,4 +401,3 @@
     </script>
 </body>
 </html>
-
