@@ -29,7 +29,7 @@
 
     <header class="bg-blue-900 text-white shadow-lg">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <!-- 타이틀 클릭 시 초기 화면(홈)으로 새로고침 되도록 수정 -->
+            <!-- 타이틀 클릭 시 초기 화면(홈)으로 새로고침 -->
             <a href="javascript:void(0);" onclick="window.location.href = window.location.pathname;" class="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer block">
                 <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
                 <div>
@@ -38,8 +38,8 @@
                 </div>
             </a>
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 7.2</div>
-                <div class="text-[10px] text-gray-400">Pin Calibration & Home Link</div>
+                <div class="text-xs text-gray-300">Ver 7.3</div>
+                <div class="text-[10px] text-gray-400">Kor Address Pin & Home Link</div>
             </div>
         </div>
     </header>
@@ -193,6 +193,7 @@
         const selectedAddressBox = document.getElementById('selected-address-box');
         const displaySelectedAddr = document.getElementById('display-selected-addr');
 
+        // 이미지가 없을 때 무한 로딩을 방지하고 기본 지도로 전환
         territoryMapImg.addEventListener('error', function() {
             if (!this.src.endsWith('MAP.jpg')) {
                 this.src = 'MAP.jpg';
@@ -246,6 +247,7 @@
             return null;
         }
 
+        // 한국어 주소를 바탕으로 API 호출하여 정확도 개선 및 영역(Bounds) 튜닝 적용
         function placePinOnMap(address) {
             mapPin.classList.add('hidden');
             
@@ -256,12 +258,11 @@
                         const lat = parseFloat(data[0].lat);
                         const lon = parseFloat(data[0].lon);
                         
-                        // MAP.jpg 이미지의 실제 화면 비율에 맞게 좌표 경계값 튜닝
                         const bounds = {
-                            north: 39.5, // 북한 위쪽
-                            south: 32.5, // 제주도 아래쪽
-                            west: 123.5, // 서해 끝
-                            east: 132.5  // 동해 끝
+                            north: 38.9, 
+                            south: 33.0, 
+                            west: 125.7, 
+                            east: 131.5  
                         };
                         
                         let xPercent = ((lon - bounds.west) / (bounds.east - bounds.west)) * 100;
@@ -309,26 +310,42 @@
                 resPMA.textContent = displayCode || "N/A";
                 resPostcodeVal.textContent = code;
 
-                const provKey = findKey(result, ['province']);
-                const distKey = findKey(result, ['district']);
-                const neighKey = findKey(result, ['neighbourhood', 'dong']);
+                // 1. 영어 주소 조합
+                const provEngKey = findKey(result, ['province']);
+                const distEngKey = findKey(result, ['district']);
+                const neighEngKey = findKey(result, ['neighbourhood', 'dongenglish']);
                 
-                const addressParts = [
-                    provKey ? result[provKey] : "",
-                    distKey ? result[distKey] : "",
-                    neighKey ? result[neighKey] : ""
+                const addressEngParts = [
+                    provEngKey ? result[provEngKey] : "",
+                    distEngKey ? result[distEngKey] : "",
+                    neighEngKey ? result[neighEngKey] : ""
                 ].filter(part => part && String(part).trim() !== "");
                 
-                const fullEngAddress = addressParts.join(' ') + ", South Korea"; 
+                const fullEngAddress = addressEngParts.join(' ') + ", South Korea"; 
                 resAddress.textContent = fullEngAddress;
                 
                 mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(fullEngAddress)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
                 
+                // 2. 한국어 주소 조합 (핀 계산용)
+                const provKorKey = findKey(result, ['si/do', 'sido']);
+                const distKorKey = findKey(result, ['gu/gun', 'gugun']);
+                const neighKorKey = findKey(result, ['dong']);
+
+                const addressKorParts = [
+                    provKorKey ? result[provKorKey] : "",
+                    distKorKey ? result[distKorKey] : "",
+                    neighKorKey ? result[neighKorKey] : ""
+                ].filter(part => part && String(part).trim() !== "");
+                
+                const fullKorAddress = addressKorParts.join(' ');
+
                 const codeForImage = String(displayCode || "").trim();
                 territoryMapImg.src = codeForImage ? `MAP_${codeForImage}.jpg` : 'MAP.jpg';
 
-                // 좌표 기반 빨간 핀 그리기 실행
-                placePinOnMap(fullEngAddress);
+                // 영문 대신 한국어 주소로 API 호출
+                if (fullKorAddress) {
+                    placePinOnMap(fullKorAddress);
+                }
 
                 window.location.hash = code; 
             } else {
