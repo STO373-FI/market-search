@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'FY27 Market Definition.xlsx' # 이 엑셀 파일이 덮어씌워질 때만 트리거 작동
+    workflow_dispatch:
 
 jobs:
   build-and-commit:
