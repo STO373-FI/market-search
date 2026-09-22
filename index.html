@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FY26 Market Definition Search</title>
+    <title>FY27 Market Definition Search</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- CSV 파서(PapaParse) 대신 Excel 파서(SheetJS) 사용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -18,14 +19,13 @@
             border-top: 3px solid #1e40af;
             width: 20px;
             height: 20px;
-            -webkit-animation: spin 1s linear infinite; /* Safari */
+            -webkit-animation: spin 1s linear infinite;
             animation: spin 1s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Map iframe styling */
         #map-frame {
             width: 100%;
             height: 300px;
@@ -41,14 +41,14 @@
             <a href="https://sto373-fi.github.io/market-search/" class="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer block">
                 <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
                 <div>
-                    <h1 class="text-xl font-bold leading-tight">FY26 Market Definition Search</h1>
+                    <h1 class="text-xl font-bold leading-tight">FY27 Market Definition Search</h1>
                     <p class="text-[10px] text-blue-200 font-light">Market Area & Address Lookup Tool</p>
                 </div>
             </a>
             
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 4.3</div>
-                <div class="text-[10px] text-gray-400">Label Logic Updated</div>
+                <div class="text-xs text-gray-300">Ver 5.0</div>
+                <div class="text-[10px] text-gray-400">Excel Data Integration</div>
             </div>
         </div>
     </header>
@@ -59,8 +59,8 @@
             <div class="flex items-center">
                 <div class="loader mr-3"></div>
                 <div>
-                    <span class="text-sm font-medium block">서버에서 데이터 파일을 불러오는 중입니다...</span>
-                    <span class="text-xs text-blue-600">Loading data file from server...</span>
+                    <span class="text-sm font-medium block">서버에서 엑셀 파일을 불러오는 중입니다...</span>
+                    <span class="text-xs text-blue-600">Loading excel file from server...</span>
                 </div>
             </div>
         </div>
@@ -74,18 +74,19 @@
 
             <p class="text-sm text-gray-500 mb-1">
                 자동으로 데이터 파일을 찾을 수 없습니다.<br>
-                <strong>FY26 Market Definition.csv</strong> 파일을 직접 업로드해주세요.
+                <strong>FY27 Market Definition.xlsx</strong> 파일을 직접 업로드해주세요.
             </p>
-            <p class="text-xs text-gray-400 mb-4">Cannot find the file automatically. Please upload the CSV file manually.</p>
+            <p class="text-xs text-gray-400 mb-4">Cannot find the file automatically. Please upload the Excel file manually.</p>
             
             <div class="flex items-center justify-center w-full">
+                <!-- accept 속성을 엑셀 파일 형식으로 변경 -->
                 <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div class="flex flex-col items-center justify-center pt-5 pb-6">
                         <i data-lucide="upload-cloud" class="w-8 h-8 mb-3 text-gray-400"></i>
                         <p class="mb-1 text-sm text-gray-500"><span class="font-semibold">클릭하여 파일 선택</span> 또는 드래그 앤 드롭</p>
-                        <p class="text-xs text-gray-400">Click to upload or drag and drop</p>
+                        <p class="text-xs text-gray-400">Click to upload or drag and drop (.xlsx)</p>
                     </div>
-                    <input id="dropzone-file" type="file" class="hidden" accept=".csv" />
+                    <input id="dropzone-file" type="file" class="hidden" accept=".xlsx, .xls" />
                 </label>
             </div>
         </div>
@@ -191,7 +192,8 @@
 
         let marketData = []; 
         let isDataLoaded = false;
-        const TARGET_CSV_FILENAME = 'FY26 Market Definition.csv';
+        const TARGET_EXCEL_FILENAME = 'FY27 Market Definition.xlsx';
+        const TARGET_SHEET_NAME = 'FY27 Market Definition';
 
         // DOM Elements
         const loadingStatus = document.getElementById('loading-status');
@@ -210,10 +212,10 @@
         
         const resMarket = document.getElementById('res-market');
         const resPMA = document.getElementById('res-pma');
-        const pmaLabel = document.getElementById('pma-label'); // Label element
+        const pmaLabel = document.getElementById('pma-label');
         const resAddress = document.getElementById('res-address');
         const resPostcodeVal = document.getElementById('res-postcode-val');
-        const mapFrame = document.getElementById('map-frame'); // Map Iframe
+        const mapFrame = document.getElementById('map-frame'); 
         
         const selectedAddressBox = document.getElementById('selected-address-box');
         const displaySelectedAddr = document.getElementById('display-selected-addr');
@@ -226,17 +228,17 @@
         function attemptAutoLoad() {
             loadingStatus.classList.remove('hidden');
 
-            fetch(TARGET_CSV_FILENAME)
+            fetch(TARGET_EXCEL_FILENAME)
                 .then(response => {
                     if (!response.ok) throw new Error("Network response was not ok");
-                    return response.text();
+                    return response.arrayBuffer(); // Excel 파일은 ArrayBuffer로 읽어옵니다.
                 })
-                .then(csvText => {
-                    parseCSV(csvText);
+                .then(buffer => {
+                    parseExcelData(buffer);
                     loadingStatus.classList.add('hidden');
                 })
                 .catch(error => {
-                    console.warn("Auto-load failed. Switching to manual upload.");
+                    console.warn("Auto-load failed. Switching to manual upload.", error);
                     loadingStatus.classList.add('hidden');
                     uploadSection.classList.remove('hidden');
                 });
@@ -247,25 +249,36 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    onDataLoaded(results.data);
-                    uploadSection.classList.add('hidden');
-                },
-                error: function(err) { alert("File read failed: " + err); }
-            });
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                parseExcelData(data);
+                uploadSection.classList.add('hidden');
+            };
+            reader.readAsArrayBuffer(file);
         });
 
-        function parseCSV(csvText) {
-            Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    onDataLoaded(results.data);
+        function parseExcelData(data) {
+            try {
+                // SheetJS(xlsx) 라이브러리를 사용하여 엑셀 파싱
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                if (!workbook.SheetNames.includes(TARGET_SHEET_NAME)) {
+                    alert(`엑셀 파일 내에 '${TARGET_SHEET_NAME}' 시트가 없습니다.`);
+                    return;
                 }
-            });
+
+                // 타겟 시트 가져오기
+                const worksheet = workbook.Sheets[TARGET_SHEET_NAME];
+                
+                // 시트 데이터를 JSON 형태로 변환 (빈 셀도 처리)
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                
+                onDataLoaded(jsonData);
+            } catch (error) {
+                console.error(error);
+                alert("엑셀 파일 변환 중 오류가 발생했습니다: " + error.message);
+            }
         }
 
         function onDataLoaded(data) {
@@ -273,7 +286,7 @@
             isDataLoaded = true;
             dbStatusBadge.textContent = "✅ 데이터 연결됨";
             dbStatusBadge.className = "bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200";
-            dbStatusSub.textContent = "Data Connected";
+            dbStatusSub.textContent = "Data Connected (FY27)";
             
             searchSection.classList.remove('opacity-50', 'pointer-events-none');
             inputKeyword.focus();
@@ -300,8 +313,10 @@
             }
         }
 
-        // Function to look up the data from CSV
+        // Function to look up the data from JSON
         function lookupByPostcode(code) {
+            // Excel 데이터 파싱 시 컬럼명에 줄바꿈이 있는 경우를 대비해 느슨한 비교 혹은 정확한 매핑 유지
+            // 기존 CSV 헤더 명칭이 엑셀 첫 행의 텍스트와 정확히 일치해야 합니다.
             const result = marketData.find(row => row['Postcode'] == code);
 
             if (result) {
@@ -314,7 +329,7 @@
                 let labelText = "PMA"; // Default label
 
                 // If PMA is invalid, switch to SMA
-                if (!displayCode || displayCode.trim() === '' || displayCode === '#N/A') {
+                if (!displayCode || String(displayCode).trim() === '' || displayCode === '#N/A') {
                     displayCode = fallbackCode;
                     labelText = "SMA";
                 }
@@ -329,12 +344,12 @@
 
                 // English Address Construction
                 const addressParts = [
-                    result['Province\nSi / Do English'],
-                    result['District\nGu / Gun English'],
-                    result['Neighbourhood\nDong English']
-                ].filter(part => part && part.trim() !== "");
+                    result['Province\nSi / Do English'] || result['Province\r\nSi / Do English'], // 줄바꿈 문자 호환성 처리
+                    result['District\nGu / Gun English'] || result['District\r\nGu / Gun English'],
+                    result['Neighbourhood\nDong English'] || result['Neighbourhood\r\nDong English']
+                ].filter(part => part && String(part).trim() !== "");
                 
-                const fullEngAddress = addressParts.join(' ') + ", South Korea"; // Add country for better map result
+                const fullEngAddress = addressParts.join(' ') + ", South Korea"; 
                 resAddress.textContent = fullEngAddress;
                 
                 // Update Map
@@ -351,7 +366,6 @@
         }
 
         function updateMap(address) {
-            // Using Google Maps Embed Iframe (No API Key mode)
             const query = encodeURIComponent(address);
             mapFrame.src = `https://maps.google.com/maps?q=${query}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
         }
