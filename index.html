@@ -37,8 +37,8 @@
                 </div>
             </a>
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 6.1</div>
-                <div class="text-[10px] text-gray-400">Postcode Logic Patched</div>
+                <div class="text-xs text-gray-300">Ver 6.2</div>
+                <div class="text-[10px] text-gray-400">Robust Search & JSON Sync</div>
             </div>
         </div>
     </header>
@@ -160,7 +160,8 @@
 
     <footer class="bg-gray-200 py-4 mt-auto">
         <div class="container mx-auto text-center">
-            <p class="text-xs text-gray-500 font-medium">Market Definition Tool</p>
+            <p class="text-xs text-gray-500 font-medium">IKEA Market Definition Tool</p>
+            <p class="text-[10px] text-gray-400">Powered by automated STO373 FI</p>
         </div>
     </footer>
 
@@ -170,7 +171,6 @@
         let marketData = []; 
         let isDataLoaded = false;
         
-        // 사전에 변환된 JSON 파일 타겟팅
         const TARGET_JSON_FILENAME = 'market_data.json';
 
         const loadingStatus = document.getElementById('loading-status');
@@ -198,9 +198,9 @@
 
         window.addEventListener('DOMContentLoaded', attemptAutoLoad);
 
-        // JSON 파일을 fetch를 통해 가볍게 로드
         function attemptAutoLoad() {
-            fetch(TARGET_JSON_FILENAME + "?t=" + new Date().getTime()) // 캐시 방지 적용
+            // 캐시 방지(Cache busting) 쿼리를 달아 무조건 최신 JSON을 로드
+            fetch(TARGET_JSON_FILENAME + "?t=" + new Date().getTime()) 
                 .then(response => {
                     if (!response.ok) throw new Error("JSON 파일을 찾을 수 없습니다.");
                     return response.json();
@@ -235,11 +235,22 @@
             }
         }
 
+        // 객체 키(헤더)를 안전하게 탐색하는 유틸 함수 (공백 및 줄바꿈 무시)
+        function findKey(row, possibleNames) {
+            const keys = Object.keys(row);
+            for (let name of possibleNames) {
+                const matched = keys.find(k => k.replace(/\s+/g, '').toLowerCase().includes(name.toLowerCase()));
+                if (matched) return matched;
+            }
+            return null;
+        }
+
         function lookupByPostcode(code) {
-            // 수정된 부분: 숫자가 0으로 시작하는 우편번호(예: 08803)가 엑셀 변환 중 숫자로 취급되어 잘린 경우를 복원하여 비교
             const result = marketData.find(row => {
-                if (row['Postcode'] == null || row['Postcode'] === '') return false;
-                const paddedDbCode = String(row['Postcode']).padStart(5, '0');
+                const actualKey = findKey(row, ['postcode']);
+                if (!actualKey || row[actualKey] == null || row[actualKey] === '') return false;
+                
+                const paddedDbCode = String(row[actualKey]).trim().padStart(5, '0');
                 return paddedDbCode === code;
             });
 
@@ -247,32 +258,46 @@
                 errorMessage.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
 
-                let displayCode = result['PMA'];
+                // PMA 및 SMA 처리
+                const pmaKey = findKey(result, ['pma']);
+                const smaKey = findKey(result, ['sma']);
+                
+                let displayCode = pmaKey ? result[pmaKey] : null;
                 let labelText = "PMA";
+                
                 if (!displayCode || String(displayCode).trim() === '' || displayCode === '#N/A') {
-                    displayCode = result['SMA'];
+                    displayCode = smaKey ? result[smaKey] : null;
                     labelText = "SMA";
                 }
 
-                resMarket.textContent = result['Market Name'] || "N/A";
+                // Market Name 처리
+                const marketKey = findKey(result, ['marketname']);
+                resMarket.textContent = marketKey ? result[marketKey] : "N/A";
+                
                 pmaLabel.textContent = labelText;
                 resPMA.textContent = displayCode || "N/A";
                 resPostcodeVal.textContent = code;
 
+                // Address(English) 처리 - Province, District, Neighbourhood 탐색
+                const provKey = findKey(result, ['province']);
+                const distKey = findKey(result, ['district']);
+                const neighKey = findKey(result, ['neighbourhood', 'dong']);
+                
                 const addressParts = [
-                    result['Province\nSi / Do English'] || result['Province\r\nSi / Do English'],
-                    result['District\nGu / Gun English'] || result['District\r\nGu / Gun English'],
-                    result['Neighbourhood\nDong English'] || result['Neighbourhood\r\nDong English']
+                    provKey ? result[provKey] : "",
+                    distKey ? result[distKey] : "",
+                    neighKey ? result[neighKey] : ""
                 ].filter(part => part && String(part).trim() !== "");
                 
                 const fullEngAddress = addressParts.join(' ') + ", South Korea"; 
                 resAddress.textContent = fullEngAddress;
                 
-                // 구글 맵 세팅
+                // 맵 업데이트
                 mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(fullEngAddress)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
                 
-                // 지역 맵 동적 이미지 세팅 (예: MAP_STO373.jpg)
-                territoryMapImg.src = `MAP_${displayCode}.jpg`;
+                // 동적 이미지 할당
+                const codeForImage = String(displayCode || "").trim();
+                territoryMapImg.src = codeForImage ? `MAP_${codeForImage}.jpg` : 'MAP.jpg';
 
                 window.location.hash = code; 
             } else {
