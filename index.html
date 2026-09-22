@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FY27 Market Definition Search</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- CSV 파서(PapaParse) 대신 Excel 파서(SheetJS) 사용 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,18 +18,11 @@
             border-top: 3px solid #1e40af;
             width: 20px;
             height: 20px;
-            -webkit-animation: spin 1s linear infinite;
             animation: spin 1s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-        #map-frame {
-            width: 100%;
-            height: 300px;
-            border: 0;
-            border-radius: 0.5rem;
         }
     </style>
 </head>
@@ -38,22 +30,21 @@
 
     <header class="bg-blue-900 text-white shadow-lg">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="https://sto373-fi.github.io/market-search/" class="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer block">
+            <a href="#" class="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer block">
                 <i data-lucide="map-pin" class="w-6 h-6 text-yellow-400"></i>
                 <div>
                     <h1 class="text-xl font-bold leading-tight">FY27 Market Definition Search</h1>
                     <p class="text-[10px] text-blue-200 font-light">Market Area & Address Lookup Tool</p>
                 </div>
             </a>
-            
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 5.0</div>
-                <div class="text-[10px] text-gray-400">Excel Data Integration</div>
+                <div class="text-xs text-gray-300">Ver 5.1</div>
+                <div class="text-[10px] text-gray-400">Visual Map Integration</div>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow container mx-auto px-4 py-8 max-w-2xl">
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-3xl">
         
         <div id="loading-status" class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-6 flex items-center justify-between hidden">
             <div class="flex items-center">
@@ -76,10 +67,7 @@
                 자동으로 데이터 파일을 찾을 수 없습니다.<br>
                 <strong>FY27 Market Definition.xlsx</strong> 파일을 직접 업로드해주세요.
             </p>
-            <p class="text-xs text-gray-400 mb-4">Cannot find the file automatically. Please upload the Excel file manually.</p>
-            
-            <div class="flex items-center justify-center w-full">
-                <!-- accept 속성을 엑셀 파일 형식으로 변경 -->
+            <div class="flex items-center justify-center w-full mt-4">
                 <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div class="flex flex-col items-center justify-center pt-5 pb-6">
                         <i data-lucide="upload-cloud" class="w-8 h-8 mb-3 text-gray-400"></i>
@@ -98,37 +86,26 @@
                         <i data-lucide="search" class="w-5 h-5 mr-2 text-blue-600"></i>
                         검색 (우편번호 또는 주소)
                     </h2>
-                    <p class="text-xs text-gray-400 ml-7">Search (Zip code or Address)</p>
                 </div>
-                
                 <div class="text-right">
                     <span id="db-status-badge" class="bg-gray-200 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded border border-gray-300">데이터 대기중</span>
-                    <p id="db-status-sub" class="text-[10px] text-gray-400 mt-1">Waiting for data</p>
                 </div>
             </div>
             
             <div class="relative flex gap-2">
-                <input type="text" id="input-keyword" 
-                    class="block w-full p-4 pl-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 outline-none placeholder-gray-400" 
-                    placeholder="우편번호(5자리) 또는 주소 (예: 남부순환로)" >
-                
+                <input type="text" id="input-keyword" class="block w-full p-4 pl-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 outline-none placeholder-gray-400" placeholder="우편번호(5자리) 또는 주소 (예: 남부순환로)">
                 <button type="button" id="search-btn" class="bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg text-sm px-6 py-2 whitespace-nowrap focus:ring-4 focus:outline-none focus:ring-blue-300 flex flex-col justify-center items-center">
                     <span>검색</span>
                     <span class="text-[10px] opacity-80 font-light">Search</span>
                 </button>
             </div>
-            <p class="mt-2 text-xs text-gray-500">
-                💡 <strong>숫자 5자리</strong> 입력 시 즉시 조회, <strong>주소</strong> 입력 시 주소 찾기 창이 열립니다.<br>
-                <span class="text-gray-400 text-[11px] block mt-0.5">Instant lookup for 5-digit zip code, Address search popup for text input.</span>
-            </p>
         </div>
 
         <div id="result-container" class="hidden">
-            <div class="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-r-lg shadow-md hover:shadow-lg transition-shadow">
+            <div class="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-r-lg shadow-md">
                 <div id="selected-address-box" class="hidden mb-4 p-2 bg-white rounded border border-blue-100 text-sm text-gray-600 flex items-center">
                     <div>
                         <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded mr-2">선택 주소</span>
-                        <span class="text-[10px] text-blue-400 mr-2 block">Selected Address</span>
                     </div>
                     <span id="display-selected-addr" class="font-medium"></span>
                 </div>
@@ -151,14 +128,43 @@
                     <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
                 </div>
 
-                <div class="mt-6">
-                    <div class="flex items-center mb-2">
-                        <i data-lucide="map" class="w-4 h-4 mr-1 text-gray-500"></i>
-                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Location Map</span>
+                <!-- 듀얼 맵 UI (Google Map + 권역 이미지) -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- 상세 위치 (Google Map) -->
+                    <div>
+                        <div class="flex items-center mb-2 justify-between">
+                            <div class="flex items-center">
+                                <i data-lucide="crosshair" class="w-4 h-4 mr-1 text-blue-600"></i>
+                                <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Detailed Location</span>
+                            </div>
+                        </div>
+                        <div class="bg-gray-200 rounded-lg overflow-hidden shadow-inner border border-gray-300 h-64">
+                            <iframe id="map-frame" src="about:blank" allowfullscreen loading="lazy" class="w-full h-full border-0"></iframe>
+                        </div>
                     </div>
-                    <div class="bg-gray-200 rounded-lg overflow-hidden shadow-inner border border-gray-300">
-                        <iframe id="map-frame" src="about:blank" allowfullscreen loading="lazy"></iframe>
+
+                    <!-- 마켓 권역 (MAP.jpg) -->
+                    <div>
+                        <div class="flex items-center mb-2 justify-between">
+                            <div class="flex items-center">
+                                <i data-lucide="map" class="w-4 h-4 mr-1 text-green-600"></i>
+                                <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Market Territory</span>
+                            </div>
+                        </div>
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-inner border border-gray-300 h-64 relative group cursor-pointer" onclick="window.open('MAP.jpg', '_blank')">
+                            <!-- MAP.jpg가 로드됩니다 -->
+                            <img src="MAP.jpg" alt="Market Area Map" class="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-300">
+                            
+                            <!-- 호버 시 안내 문구 -->
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <span class="bg-black bg-opacity-70 text-white text-xs px-3 py-2 rounded-full flex items-center">
+                                    <i data-lucide="maximize-2" class="w-3 h-3 mr-1"></i> 크게 보기
+                                </span>
+                            </div>
+                        </div>
                     </div>
+
                 </div>
                 
                 <div class="mt-4 text-right">
@@ -172,22 +178,16 @@
             <div>
                 <span class="font-medium">검색 결과가 없습니다.</span> 우편번호(<span id="err-code" class="font-bold"></span>)를 찾을 수 없습니다.
             </div>
-            <div class="text-xs text-red-600 mt-1 opacity-80">
-                No results found. The postcode does not exist in the database.
-            </div>
         </div>
-
     </main>
 
     <footer class="bg-gray-200 py-4 mt-auto">
         <div class="container mx-auto text-center">
-            <p class="text-xs text-gray-500 font-medium">IKEA Market Definition Tool</p>
-            <p class="text-[10px] text-gray-400">Powered by automated STO373 FI & Kakao, Google Address API</p>
+            <p class="text-xs text-gray-500 font-medium">Market Definition Tool</p>
         </div>
     </footer>
 
     <script>
-        // Initialize Lucide Icons
         lucide.createIcons();
 
         let marketData = []; 
@@ -195,12 +195,10 @@
         const TARGET_EXCEL_FILENAME = 'FY27 Market Definition.xlsx';
         const TARGET_SHEET_NAME = 'FY27 Market Definition';
 
-        // DOM Elements
         const loadingStatus = document.getElementById('loading-status');
         const uploadSection = document.getElementById('upload-section');
         const searchSection = document.getElementById('search-section');
         const dbStatusBadge = document.getElementById('db-status-badge');
-        const dbStatusSub = document.getElementById('db-status-sub');
         const fileInput = document.getElementById('dropzone-file');
         
         const searchBtn = document.getElementById('search-btn');
@@ -220,39 +218,31 @@
         const selectedAddressBox = document.getElementById('selected-address-box');
         const displaySelectedAddr = document.getElementById('display-selected-addr');
 
-        // --- 1. Auto-Load Logic ---
-        window.addEventListener('DOMContentLoaded', () => {
-            attemptAutoLoad();
-        });
+        window.addEventListener('DOMContentLoaded', attemptAutoLoad);
 
         function attemptAutoLoad() {
             loadingStatus.classList.remove('hidden');
-
             fetch(TARGET_EXCEL_FILENAME)
                 .then(response => {
-                    if (!response.ok) throw new Error("Network response was not ok");
-                    return response.arrayBuffer(); // Excel 파일은 ArrayBuffer로 읽어옵니다.
+                    if (!response.ok) throw new Error();
+                    return response.arrayBuffer();
                 })
                 .then(buffer => {
                     parseExcelData(buffer);
                     loadingStatus.classList.add('hidden');
                 })
-                .catch(error => {
-                    console.warn("Auto-load failed. Switching to manual upload.", error);
+                .catch(() => {
                     loadingStatus.classList.add('hidden');
                     uploadSection.classList.remove('hidden');
                 });
         }
 
-        // --- 2. Manual Upload Logic ---
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                parseExcelData(data);
+                parseExcelData(new Uint8Array(e.target.result));
                 uploadSection.classList.add('hidden');
             };
             reader.readAsArrayBuffer(file);
@@ -260,24 +250,11 @@
 
         function parseExcelData(data) {
             try {
-                // SheetJS(xlsx) 라이브러리를 사용하여 엑셀 파싱
                 const workbook = XLSX.read(data, { type: 'array' });
-                
-                if (!workbook.SheetNames.includes(TARGET_SHEET_NAME)) {
-                    alert(`엑셀 파일 내에 '${TARGET_SHEET_NAME}' 시트가 없습니다.`);
-                    return;
-                }
-
-                // 타겟 시트 가져오기
                 const worksheet = workbook.Sheets[TARGET_SHEET_NAME];
-                
-                // 시트 데이터를 JSON 형태로 변환 (빈 셀도 처리)
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                
-                onDataLoaded(jsonData);
+                onDataLoaded(XLSX.utils.sheet_to_json(worksheet, { defval: "" }));
             } catch (error) {
-                console.error(error);
-                alert("엑셀 파일 변환 중 오류가 발생했습니다: " + error.message);
+                alert("엑셀 파일 변환 오류: " + error.message);
             }
         }
 
@@ -286,65 +263,44 @@
             isDataLoaded = true;
             dbStatusBadge.textContent = "✅ 데이터 연결됨";
             dbStatusBadge.className = "bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200";
-            dbStatusSub.textContent = "Data Connected (FY27)";
-            
             searchSection.classList.remove('opacity-50', 'pointer-events-none');
-            inputKeyword.focus();
             checkUrlParam();
         }
-
-        // --- 3. Intelligent Search Logic (Postcode vs Address) ---
         
         function handleSearchAction() {
             if (!isDataLoaded) return;
             const val = inputKeyword.value.trim();
             if (!val) return;
 
-            // Check if input is a 5-digit number (Postcode)
-            const isPostcode = /^\d{5}$/.test(val);
-
-            if (isPostcode) {
-                // Direct lookup
+            if (/^\d{5}$/.test(val)) {
                 selectedAddressBox.classList.add('hidden'); 
                 lookupByPostcode(val);
             } else {
-                // Treat as Address -> Open Daum Postcode Search
                 openDaumAddressSearch(val);
             }
         }
 
-        // Function to look up the data from JSON
         function lookupByPostcode(code) {
-            // Excel 데이터 파싱 시 컬럼명에 줄바꿈이 있는 경우를 대비해 느슨한 비교 혹은 정확한 매핑 유지
-            // 기존 CSV 헤더 명칭이 엑셀 첫 행의 텍스트와 정확히 일치해야 합니다.
             const result = marketData.find(row => row['Postcode'] == code);
 
             if (result) {
                 errorMessage.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
 
-                // Logic to switch between PMA and SMA label & value
                 let displayCode = result['PMA'];
-                const fallbackCode = result['SMA'];
-                let labelText = "PMA"; // Default label
-
-                // If PMA is invalid, switch to SMA
+                let labelText = "PMA";
                 if (!displayCode || String(displayCode).trim() === '' || displayCode === '#N/A') {
-                    displayCode = fallbackCode;
+                    displayCode = result['SMA'];
                     labelText = "SMA";
                 }
 
                 resMarket.textContent = result['Market Name'] || "N/A";
-                
-                // Update Label and Value
                 pmaLabel.textContent = labelText;
                 resPMA.textContent = displayCode || "N/A";
-                
                 resPostcodeVal.textContent = code;
 
-                // English Address Construction
                 const addressParts = [
-                    result['Province\nSi / Do English'] || result['Province\r\nSi / Do English'], // 줄바꿈 문자 호환성 처리
+                    result['Province\nSi / Do English'] || result['Province\r\nSi / Do English'],
                     result['District\nGu / Gun English'] || result['District\r\nGu / Gun English'],
                     result['Neighbourhood\nDong English'] || result['Neighbourhood\r\nDong English']
                 ].filter(part => part && String(part).trim() !== "");
@@ -352,12 +308,8 @@
                 const fullEngAddress = addressParts.join(' ') + ", South Korea"; 
                 resAddress.textContent = fullEngAddress;
                 
-                // Update Map
-                updateMap(fullEngAddress);
-
-                // Update URL History
+                mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(fullEngAddress)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
                 window.location.hash = code; 
-
             } else {
                 resultContainer.classList.add('hidden');
                 errorMessage.classList.remove('hidden');
@@ -365,46 +317,32 @@
             }
         }
 
-        function updateMap(address) {
-            const query = encodeURIComponent(address);
-            mapFrame.src = `https://maps.google.com/maps?q=${query}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
-        }
-
         function openDaumAddressSearch(keyword) {
             new daum.Postcode({
                 oncomplete: function(data) {
-                    const zonecode = data.zonecode; 
-                    const fullAddress = data.roadAddress || data.jibunAddress;
-                    
-                    inputKeyword.value = zonecode;
-                    
+                    inputKeyword.value = data.zonecode;
                     selectedAddressBox.classList.remove('hidden');
-                    displaySelectedAddr.textContent = fullAddress;
-
-                    lookupByPostcode(zonecode);
+                    displaySelectedAddr.textContent = data.roadAddress || data.jibunAddress;
+                    lookupByPostcode(data.zonecode);
                 }
-            }).open({
-                q: keyword 
-            });
+            }).open({ q: keyword });
         }
 
-        // Event Listeners
         searchBtn.addEventListener('click', handleSearchAction);
-        
-        inputKeyword.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearchAction();
+        inputKeyword.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearchAction(); });
+        window.addEventListener('hashchange', () => {
+            if (window.location.hash) {
+                inputKeyword.value = window.location.hash.substring(1);
+                lookupByPostcode(inputKeyword.value);
+            }
         });
 
         function checkUrlParam() {
-            const hash = window.location.hash.substring(1);
-            if (hash) {
-                inputKeyword.value = hash;
-                lookupByPostcode(hash);
+            if (window.location.hash) {
+                inputKeyword.value = window.location.hash.substring(1);
+                lookupByPostcode(inputKeyword.value);
             }
         }
-
-        window.addEventListener('hashchange', checkUrlParam);
-
     </script>
 </body>
 </html>
