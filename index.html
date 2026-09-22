@@ -37,8 +37,8 @@
                 </div>
             </a>
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 6.2</div>
-                <div class="text-[10px] text-gray-400">Robust Search & JSON Sync</div>
+                <div class="text-xs text-gray-300">Ver 7.0</div>
+                <div class="text-[10px] text-gray-400">Dynamic Pin Overlay</div>
             </div>
         </div>
     </header>
@@ -129,6 +129,9 @@
                                  class="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-300"
                                  onerror="this.onerror=null; this.src='MAP.jpg';">
                             
+                            <!-- 좌표 기반 동적 빨간 핀 오버레이 -->
+                            <div id="map-pin" class="absolute hidden w-3 h-3 bg-red-600 rounded-full shadow-[0_0_0_2px_rgba(255,255,255,1)] transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 z-10"></div>
+                            
                             <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <span class="bg-black bg-opacity-70 text-white text-xs px-3 py-2 rounded-full flex items-center">
                                     <i data-lucide="maximize-2" class="w-3 h-3 mr-1"></i> 지역 맵 크게 보기
@@ -186,6 +189,7 @@
         
         const mapFrame = document.getElementById('map-frame'); 
         const territoryMapImg = document.getElementById('territory-map-img');
+        const mapPin = document.getElementById('map-pin');
         
         const selectedAddressBox = document.getElementById('selected-address-box');
         const displaySelectedAddr = document.getElementById('display-selected-addr');
@@ -237,6 +241,41 @@
             return null;
         }
 
+        // 주소를 기반으로 핀 위치를 계산하고 오버레이하는 함수
+        function placePinOnMap(address) {
+            mapPin.classList.add('hidden');
+            
+            // 무료 OpenStreetMap Geocoding API 활용
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lon = parseFloat(data[0].lon);
+                        
+                        // MAP.jpg 이미지의 대략적인 대한민국 위경도 경계값
+                        // 이미지가 잘린 비율에 맞게 미세 조정이 가능합니다.
+                        const bounds = {
+                            north: 38.6,
+                            south: 33.1,
+                            west: 125.5,
+                            east: 130.0
+                        };
+                        
+                        let xPercent = ((lon - bounds.west) / (bounds.east - bounds.west)) * 100;
+                        let yPercent = ((bounds.north - lat) / (bounds.north - bounds.south)) * 100;
+                        
+                        xPercent = Math.max(0, Math.min(100, xPercent));
+                        yPercent = Math.max(0, Math.min(100, yPercent));
+                        
+                        mapPin.style.left = `${xPercent}%`;
+                        mapPin.style.top = `${yPercent}%`;
+                        mapPin.classList.remove('hidden');
+                    }
+                })
+                .catch(err => console.error('Pin overlay failed:', err));
+        }
+
         function lookupByPostcode(code) {
             const result = marketData.find(row => {
                 const actualKey = findKey(row, ['postcode']);
@@ -285,6 +324,9 @@
                 
                 const codeForImage = String(displayCode || "").trim();
                 territoryMapImg.src = codeForImage ? `MAP_${codeForImage}.jpg` : 'MAP.jpg';
+
+                // 좌표 기반 빨간 핀 계산 트리거
+                placePinOnMap(fullEngAddress);
 
                 window.location.hash = code; 
             } else {
