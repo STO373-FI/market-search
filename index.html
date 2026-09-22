@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FY27 Market Definition Search</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- SheetJS(xlsx) 라이브러리 제거: 사전 변환된 JSON 데이터를 사용하여 성능 대폭 향상 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -38,44 +38,21 @@
                 </div>
             </a>
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 5.1</div>
-                <div class="text-[10px] text-gray-400">Visual Map Integration</div>
+                <div class="text-xs text-gray-300">Ver 6.0</div>
+                <div class="text-[10px] text-gray-400">JSON Data & Dynamic Map</div>
             </div>
         </div>
     </header>
 
     <main class="flex-grow container mx-auto px-4 py-8 max-w-3xl">
         
-        <div id="loading-status" class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-6 flex items-center justify-between hidden">
+        <div id="loading-status" class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
             <div class="flex items-center">
                 <div class="loader mr-3"></div>
                 <div>
-                    <span class="text-sm font-medium block">서버에서 엑셀 파일을 불러오는 중입니다...</span>
-                    <span class="text-xs text-blue-600">Loading excel file from server...</span>
+                    <span class="text-sm font-medium block">서버에서 최적화된 데이터를 불러오는 중입니다...</span>
+                    <span class="text-xs text-blue-600">Loading JSON data from server...</span>
                 </div>
-            </div>
-        </div>
-
-        <div id="upload-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-6 border border-gray-200">
-            <h2 class="text-lg font-semibold mb-1 flex items-center text-orange-600">
-                <i data-lucide="alert-circle" class="w-5 h-5 mr-2"></i>
-                데이터 파일 수동 연결
-            </h2>
-            <p class="text-xs text-orange-400 mb-2 ml-7">Manual Data File Connection</p>
-
-            <p class="text-sm text-gray-500 mb-1">
-                자동으로 데이터 파일을 찾을 수 없습니다.<br>
-                <strong>FY27 Market Definition.xlsx</strong> 파일을 직접 업로드해주세요.
-            </p>
-            <div class="flex items-center justify-center w-full mt-4">
-                <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                        <i data-lucide="upload-cloud" class="w-8 h-8 mb-3 text-gray-400"></i>
-                        <p class="mb-1 text-sm text-gray-500"><span class="font-semibold">클릭하여 파일 선택</span> 또는 드래그 앤 드롭</p>
-                        <p class="text-xs text-gray-400">Click to upload or drag and drop (.xlsx)</p>
-                    </div>
-                    <input id="dropzone-file" type="file" class="hidden" accept=".xlsx, .xls" />
-                </label>
             </div>
         </div>
 
@@ -128,7 +105,7 @@
                     <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
                 </div>
 
-                <!-- 듀얼 맵 UI (Google Map + 권역 이미지) -->
+                <!-- 듀얼 맵 UI -->
                 <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     
                     <!-- 상세 위치 (Google Map) -->
@@ -144,7 +121,7 @@
                         </div>
                     </div>
 
-                    <!-- 마켓 권역 (MAP.jpg) -->
+                    <!-- 마켓 권역 동적 이미지 매핑 -->
                     <div>
                         <div class="flex items-center mb-2 justify-between">
                             <div class="flex items-center">
@@ -152,14 +129,15 @@
                                 <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Market Territory</span>
                             </div>
                         </div>
-                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-inner border border-gray-300 h-64 relative group cursor-pointer" onclick="window.open('MAP.jpg', '_blank')">
-                            <!-- MAP.jpg가 로드됩니다 -->
-                            <img src="MAP.jpg" alt="Market Area Map" class="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-300">
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-inner border border-gray-300 h-64 relative group cursor-pointer" onclick="openEnlargedMap()">
+                            <!-- PMA 코드에 맞는 이미지가 없으면 onerror를 통해 기본 MAP.jpg를 불러옵니다 -->
+                            <img id="territory-map-img" src="MAP.jpg" alt="Market Area Map" 
+                                 class="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-300"
+                                 onerror="this.onerror=null; this.src='MAP.jpg';">
                             
-                            <!-- 호버 시 안내 문구 -->
                             <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <span class="bg-black bg-opacity-70 text-white text-xs px-3 py-2 rounded-full flex items-center">
-                                    <i data-lucide="maximize-2" class="w-3 h-3 mr-1"></i> 크게 보기
+                                    <i data-lucide="maximize-2" class="w-3 h-3 mr-1"></i> 지역 맵 크게 보기
                                 </span>
                             </div>
                         </div>
@@ -192,14 +170,13 @@
 
         let marketData = []; 
         let isDataLoaded = false;
-        const TARGET_EXCEL_FILENAME = 'FY27 Market Definition.xlsx';
-        const TARGET_SHEET_NAME = 'FY27 Market Definition';
+        
+        // 사전에 변환된 JSON 파일 타겟팅
+        const TARGET_JSON_FILENAME = 'market_data.json';
 
         const loadingStatus = document.getElementById('loading-status');
-        const uploadSection = document.getElementById('upload-section');
         const searchSection = document.getElementById('search-section');
         const dbStatusBadge = document.getElementById('db-status-badge');
-        const fileInput = document.getElementById('dropzone-file');
         
         const searchBtn = document.getElementById('search-btn');
         const inputKeyword = document.getElementById('input-keyword');
@@ -213,58 +190,37 @@
         const pmaLabel = document.getElementById('pma-label');
         const resAddress = document.getElementById('res-address');
         const resPostcodeVal = document.getElementById('res-postcode-val');
+        
         const mapFrame = document.getElementById('map-frame'); 
+        const territoryMapImg = document.getElementById('territory-map-img');
         
         const selectedAddressBox = document.getElementById('selected-address-box');
         const displaySelectedAddr = document.getElementById('display-selected-addr');
 
         window.addEventListener('DOMContentLoaded', attemptAutoLoad);
 
+        // JSON 파일을 fetch를 통해 가볍게 로드
         function attemptAutoLoad() {
-            loadingStatus.classList.remove('hidden');
-            fetch(TARGET_EXCEL_FILENAME)
+            fetch(TARGET_JSON_FILENAME)
                 .then(response => {
-                    if (!response.ok) throw new Error();
-                    return response.arrayBuffer();
+                    if (!response.ok) throw new Error("JSON 파일을 찾을 수 없습니다.");
+                    return response.json();
                 })
-                .then(buffer => {
-                    parseExcelData(buffer);
+                .then(data => {
+                    marketData = data;
+                    isDataLoaded = true;
                     loadingStatus.classList.add('hidden');
+                    
+                    dbStatusBadge.textContent = "✅ JSON 데이터 연결됨";
+                    dbStatusBadge.className = "bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200";
+                    searchSection.classList.remove('opacity-50', 'pointer-events-none');
+                    
+                    checkUrlParam();
                 })
-                .catch(() => {
-                    loadingStatus.classList.add('hidden');
-                    uploadSection.classList.remove('hidden');
+                .catch((err) => {
+                    loadingStatus.innerHTML = `<div class="text-red-600 text-sm font-medium">데이터 로드 실패: ${TARGET_JSON_FILENAME} 파일을 확인해주세요.</div>`;
+                    console.error(err);
                 });
-        }
-
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                parseExcelData(new Uint8Array(e.target.result));
-                uploadSection.classList.add('hidden');
-            };
-            reader.readAsArrayBuffer(file);
-        });
-
-        function parseExcelData(data) {
-            try {
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[TARGET_SHEET_NAME];
-                onDataLoaded(XLSX.utils.sheet_to_json(worksheet, { defval: "" }));
-            } catch (error) {
-                alert("엑셀 파일 변환 오류: " + error.message);
-            }
-        }
-
-        function onDataLoaded(data) {
-            marketData = data;
-            isDataLoaded = true;
-            dbStatusBadge.textContent = "✅ 데이터 연결됨";
-            dbStatusBadge.className = "bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200";
-            searchSection.classList.remove('opacity-50', 'pointer-events-none');
-            checkUrlParam();
         }
         
         function handleSearchAction() {
@@ -308,13 +264,24 @@
                 const fullEngAddress = addressParts.join(' ') + ", South Korea"; 
                 resAddress.textContent = fullEngAddress;
                 
+                // 구글 맵 세팅
                 mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(fullEngAddress)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+                
+                // 지역 맵 동적 이미지 세팅 (예: MAP_STO373.jpg)
+                // 만약 서버에 해당 파일이 없다면 html img 태그 내의 onerror 속성에 의해 기본 MAP.jpg로 폴백됩니다.
+                territoryMapImg.src = `MAP_${displayCode}.jpg`;
+
                 window.location.hash = code; 
             } else {
                 resultContainer.classList.add('hidden');
                 errorMessage.classList.remove('hidden');
                 errCodeSpan.textContent = code;
             }
+        }
+
+        function openEnlargedMap() {
+            // 현재 표시된 이미지를 새 창으로 열기
+            window.open(territoryMapImg.src, '_blank');
         }
 
         function openDaumAddressSearch(keyword) {
