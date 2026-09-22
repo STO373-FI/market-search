@@ -37,8 +37,8 @@
                 </div>
             </a>
             <div class="text-right">
-                <div class="text-xs text-gray-300">Ver 7.0</div>
-                <div class="text-[10px] text-gray-400">Dynamic Pin Overlay</div>
+                <div class="text-xs text-gray-300">Ver 7.1</div>
+                <div class="text-[10px] text-gray-400">Map Fallback Bug Fixed</div>
             </div>
         </div>
     </header>
@@ -125,11 +125,10 @@
                             </div>
                         </div>
                         <div class="bg-gray-800 rounded-lg overflow-hidden shadow-inner border border-gray-300 h-64 relative group cursor-pointer" onclick="openEnlargedMap()">
+                            <!-- html 인라인 에러 처리 삭제 -->
                             <img id="territory-map-img" src="MAP.jpg" alt="Market Area Map" 
-                                 class="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-300"
-                                 onerror="this.onerror=null; this.src='MAP.jpg';">
+                                 class="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-300">
                             
-                            <!-- 좌표 기반 동적 빨간 핀 오버레이 -->
                             <div id="map-pin" class="absolute hidden w-3 h-3 bg-red-600 rounded-full shadow-[0_0_0_2px_rgba(255,255,255,1)] transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 z-10"></div>
                             
                             <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -194,6 +193,13 @@
         const selectedAddressBox = document.getElementById('selected-address-box');
         const displaySelectedAddr = document.getElementById('display-selected-addr');
 
+        // 영구적인 에러 처리 리스너 추가 (이미지가 없으면 기본 MAP.jpg로 안전하게 대체)
+        territoryMapImg.addEventListener('error', function() {
+            if (!this.src.endsWith('MAP.jpg')) {
+                this.src = 'MAP.jpg';
+            }
+        });
+
         window.addEventListener('DOMContentLoaded', attemptAutoLoad);
 
         function attemptAutoLoad() {
@@ -241,11 +247,9 @@
             return null;
         }
 
-        // 주소를 기반으로 핀 위치를 계산하고 오버레이하는 함수
         function placePinOnMap(address) {
             mapPin.classList.add('hidden');
             
-            // 무료 OpenStreetMap Geocoding API 활용
             fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
                 .then(res => res.json())
                 .then(data => {
@@ -253,8 +257,6 @@
                         const lat = parseFloat(data[0].lat);
                         const lon = parseFloat(data[0].lon);
                         
-                        // MAP.jpg 이미지의 대략적인 대한민국 위경도 경계값
-                        // 이미지가 잘린 비율에 맞게 미세 조정이 가능합니다.
                         const bounds = {
                             north: 38.6,
                             south: 33.1,
@@ -325,7 +327,6 @@
                 const codeForImage = String(displayCode || "").trim();
                 territoryMapImg.src = codeForImage ? `MAP_${codeForImage}.jpg` : 'MAP.jpg';
 
-                // 좌표 기반 빨간 핀 계산 트리거
                 placePinOnMap(fullEngAddress);
 
                 window.location.hash = code; 
