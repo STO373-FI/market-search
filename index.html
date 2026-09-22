@@ -104,10 +104,7 @@
                     <p id="res-address" class="text-lg text-gray-800 font-medium">-</p>
                 </div>
 
-                <!-- 듀얼 맵 UI -->
                 <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    <!-- 상세 위치 (Google Map) -->
                     <div>
                         <div class="flex items-center mb-2 justify-between">
                             <div class="flex items-center">
@@ -120,7 +117,6 @@
                         </div>
                     </div>
 
-                    <!-- 마켓 권역 동적 이미지 매핑 -->
                     <div>
                         <div class="flex items-center mb-2 justify-between">
                             <div class="flex items-center">
@@ -129,7 +125,6 @@
                             </div>
                         </div>
                         <div class="bg-gray-800 rounded-lg overflow-hidden shadow-inner border border-gray-300 h-64 relative group cursor-pointer" onclick="openEnlargedMap()">
-                            <!-- PMA 코드에 맞는 이미지가 없으면 onerror를 통해 기본 MAP.jpg를 불러옵니다 -->
                             <img id="territory-map-img" src="MAP.jpg" alt="Market Area Map" 
                                  class="w-full h-full object-cover group-hover:opacity-80 transition-opacity duration-300"
                                  onerror="this.onerror=null; this.src='MAP.jpg';">
@@ -141,7 +136,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
                 
                 <div class="mt-4 text-right">
@@ -199,7 +193,6 @@
         window.addEventListener('DOMContentLoaded', attemptAutoLoad);
 
         function attemptAutoLoad() {
-            // 캐시 방지(Cache busting) 쿼리를 달아 무조건 최신 JSON을 로드
             fetch(TARGET_JSON_FILENAME + "?t=" + new Date().getTime()) 
                 .then(response => {
                     if (!response.ok) throw new Error("JSON 파일을 찾을 수 없습니다.");
@@ -235,7 +228,6 @@
             }
         }
 
-        // 객체 키(헤더)를 안전하게 탐색하는 유틸 함수 (공백 및 줄바꿈 무시)
         function findKey(row, possibleNames) {
             const keys = Object.keys(row);
             for (let name of possibleNames) {
@@ -258,7 +250,6 @@
                 errorMessage.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
 
-                // PMA 및 SMA 처리
                 const pmaKey = findKey(result, ['pma']);
                 const smaKey = findKey(result, ['sma']);
                 
@@ -270,7 +261,6 @@
                     labelText = "SMA";
                 }
 
-                // Market Name 처리
                 const marketKey = findKey(result, ['marketname']);
                 resMarket.textContent = marketKey ? result[marketKey] : "N/A";
                 
@@ -278,7 +268,6 @@
                 resPMA.textContent = displayCode || "N/A";
                 resPostcodeVal.textContent = code;
 
-                // Address(English) 처리 - Province, District, Neighbourhood 탐색
                 const provKey = findKey(result, ['province']);
                 const distKey = findKey(result, ['district']);
                 const neighKey = findKey(result, ['neighbourhood', 'dong']);
@@ -292,10 +281,8 @@
                 const fullEngAddress = addressParts.join(' ') + ", South Korea"; 
                 resAddress.textContent = fullEngAddress;
                 
-                // 맵 업데이트
                 mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(fullEngAddress)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
                 
-                // 동적 이미지 할당
                 const codeForImage = String(displayCode || "").trim();
                 territoryMapImg.src = codeForImage ? `MAP_${codeForImage}.jpg` : 'MAP.jpg';
 
